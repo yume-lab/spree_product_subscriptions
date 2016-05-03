@@ -126,7 +126,7 @@ module Spree
     private
 
       def eligible_for_prior_notification?
-        (next_occurrence_at.to_date - Time.current.to_date).round == prior_notification_days_gap
+        prior_notification_enabled? && (next_occurrence_at.to_date - Time.current.to_date).round == prior_notification_days_gap 
       end
       
       def update_price
