@@ -6,7 +6,7 @@ module Spree
     before_action :update_params, only: :update
 
     def edit
-      reload_variables
+      load_variables
     end
 
     def update
@@ -16,7 +16,7 @@ module Spree
           format.json { render json: { subscription: { price: @subscription.price, id: @subscription.id } }, status: 200 }
         end
       else
-        reload_variables
+        load_variables
         respond_to do |format|
           format.html { render :edit }
           format.json { render json: { errors: @subscription.errors.full_messages.to_sentence }, status: 422 }
@@ -105,10 +105,10 @@ module Spree
       end
 
       def create_credit_card
-        subscription_user.credit_cards.build(card_params) || nil
+        subscription_user.credit_cards.create(card_params) || nil
       end
 
-      def reload_variables
+      def load_variables
         @subscription.reload
         @credit_cards = subscription_user.credit_cards.select(&:persisted?) - [@subscription.source]
         @order = @subscription.parent_order
