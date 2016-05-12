@@ -37,9 +37,7 @@
     <% end %>
 
     <% unless @subscription.not_changeable? %>
-      <%= f.fields_for :source do |source_form| %>
-        <%= render :partial => "spree/checkout/payment/gateway", :locals => { :payment_method => @subscription.source.payment_method } %>
-      <% end %>
+      <%= render :partial => "spree/checkout/payment/gateway", :locals => { :payment_method => @subscription.source.payment_method } %>
     <% end %>
     
   </div>

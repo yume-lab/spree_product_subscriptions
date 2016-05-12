@@ -9,8 +9,7 @@ module Spree
       end
 
       def edit
-        @credit_cards = subscription_user.credit_cards - [@subscription.source]
-        @order = @subscription.parent_order
+        reload_variables
       end
 
       def cancel
@@ -78,6 +77,12 @@ module Spree
 
         def cancel_subscription_attributes
           params.require(:subscription).permit(:cancellation_reasons)
+        end
+
+        def reload_variables
+          @subscription.reload
+          @credit_cards = subscription_user.credit_cards.select(&:persisted?) - [@subscription.source]
+          @order = @subscription.parent_order
         end
 
         def collection

@@ -6,8 +6,7 @@ module Spree
     before_action :update_params, only: :update
 
     def edit
-      @credit_cards = subscription_user.credit_cards - [@subscription.source]
-      @order = @subscription.parent_order
+      reload_variables
     end
 
     def update
@@ -17,6 +16,7 @@ module Spree
           format.json { render json: { subscription: { price: @subscription.price, id: @subscription.id } }, status: 200 }
         end
       else
+        reload_variables
         respond_to do |format|
           format.html { render :edit }
           format.json { render json: { errors: @subscription.errors.full_messages.to_sentence }, status: 422 }
@@ -97,13 +97,21 @@ module Spree
       def update_params
         if params[:use_another_card]
           if params[:use_existing_card] == 'no'
-            credit_card = subscription_user.credit_cards.create(card_params)
-            params[:subscription].merge!(source_id: credit_card.id)
+            params[:subscription].merge!(source_id: create_credit_card.try(:id))
           elsif params[:use_existing_card] == 'yes'
             params[:subscription].merge!(source_id: params[:order][:existing_card])
           end
         end
-        params[:subscription].delete(:source_attributes)
+      end
+
+      def create_credit_card
+        subscription_user.credit_cards.build(card_params) || nil
+      end
+
+      def reload_variables
+        @subscription.reload
+        @credit_cards = subscription_user.credit_cards.select(&:persisted?) - [@subscription.source]
+        @order = @subscription.parent_order
       end
 
       def card_params
