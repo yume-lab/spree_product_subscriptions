@@ -9,13 +9,13 @@ describe Spree::SubscriptionPresenter do
     it { expect(presenter.send(:initialize, active_subscription)).to eq active_subscription }
   end
 
-	context "#delivery_count" do
+  context "#display_delivery_number" do
     context "if delivery_number is present" do
-      it { expect(presenter.send :delivery_count).to eq active_subscription.delivery_number }
+      it { expect(presenter.send :display_delivery_number).to eq active_subscription.delivery_number }
     end
     context "if delivery_number is not present" do
       before { active_subscription.delivery_number = nil }
-      it { expect(presenter.send :delivery_count).to eq Float::INFINITY }
+      it { expect(presenter.send :display_delivery_number).to eq Float::INFINITY }
     end
   end
 

@@ -5,7 +5,7 @@ module Spree
       @subscription  = subscription
     end
 
-    def delivery_count
+    def display_delivery_number
       @subscription.delivery_number || Float::INFINITY
     end
 
