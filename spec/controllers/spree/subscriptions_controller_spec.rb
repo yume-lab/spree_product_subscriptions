@@ -223,15 +223,17 @@ describe Spree::SubscriptionsController, type: :controller do
     end
 
     describe "when subscription is found" do
+
       before do
         allow(Spree::Subscription).to receive(:active).and_return(subscriptions)
         allow(subscriptions).to receive(:find_by).and_return(active_subscription)
+        allow(controller).to receive(:load_variables)
       end
 
       describe "expects to receive" do
         after { do_edit({ id: active_subscription.id }) }
         it { expect(Spree::Subscription).to receive(:active).and_return(subscriptions) }
-        it { expect(subscriptions).to receive(:find_by).and_return(active_subscription) }
+        it { expect(controller).to receive(:load_variables) }
       end
 
       describe "response" do
@@ -311,6 +313,7 @@ describe Spree::SubscriptionsController, type: :controller do
           allow(active_subscription).to receive(:not_changeable?).and_return(false)
           allow(controller).to receive(:subscription_attributes).and_return(params[:subscription])
           allow(active_subscription).to receive(:update).and_return(false)
+          allow(controller).to receive(:load_variables)
         end
 
         describe "expects to receive" do
@@ -320,6 +323,7 @@ describe Spree::SubscriptionsController, type: :controller do
           it { expect(active_subscription).to receive(:not_changeable?).and_return(false) }
           it { expect(controller).to receive(:subscription_attributes).and_call_original }
           it { expect(active_subscription).to receive(:update).with(controller.send :subscription_attributes).and_return(false) }
+          it { expect(controller).to receive(:load_variables) }
         end
 
         describe "response" do
