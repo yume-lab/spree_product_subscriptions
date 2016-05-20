@@ -4,8 +4,19 @@ describe Spree::Admin::SubscriptionsController, type: :controller do
 
   stub_authorization!
 
-  let(:active_subscription) { mock_model(Spree::Subscription, id: 1, enabled: true, next_occurrence_at: Time.current) }
+  let(:active_subscription) { mock_model(Spree::Subscription, id: 1, enabled: true, next_occurrence_at: Time.current, save: true) }
   let(:cancelled_subscription) { mock_model(Spree::Subscription, id: 2, cancelled_at: Time.current, cancellation_reasons: "Test") }
+  let(:subscriptions) { double(ActiveRecord::Relation) }
+  let(:user) { mock_model(Spree.user_class) }
+  let(:credit_card1) { mock_model(Spree::CreditCard, id: 1, name: 'Sachin Mittal', number: '4111111111111111', expiry: '02/21', verification_value: '127', cc_type: 'visa', payment_method_id: 1) }
+  let(:credit_card2) { mock_model(Spree::CreditCard, id: 2, name: 'Sachin Mittal', number: '4222222222222', expiry: '02/31', verification_value: '1212', cc_type: 'visa', payment_method_id: 1) }
+  let(:credit_cards) { [credit_card1, credit_card2] }
+  let(:credit_cards_excluding_source) { [credit_card1] }
+  let(:order) { create(:completed_order_with_pending_payment) }
+
+  before do
+    order.user_id = user.id
+  end
 
   describe "#cancellation" do
     def do_cancellation params
@@ -29,6 +40,83 @@ describe Spree::Admin::SubscriptionsController, type: :controller do
       before { do_cancellation params }
       it { expect(response).to have_http_status 200 }
       it { expect(response).to render_template :cancellation }
+    end
+  end
+
+  describe "edit" do
+    def do_edit params
+      spree_get :edit, params
+    end
+
+    before do
+      allow(Spree::Subscription).to receive(:find).and_return(active_subscription)
+      allow(active_subscription).to receive(:reload).and_return(active_subscription)
+      allow(user).to receive(:credit_cards).and_return(credit_cards)
+      allow(active_subscription).to receive(:source).and_return(credit_card2)
+      allow(active_subscription).to receive(:parent_order).and_return(order)
+      allow(order).to receive(:user).and_return(user)
+    end
+
+    describe "expects to receive" do
+      after { do_edit({ id: active_subscription.id }) }
+      it { expect(Spree::Subscription).to receive(:find).and_return(active_subscription) }
+      it { expect(active_subscription).to receive(:reload).and_return(active_subscription) }
+      it { expect(user).to receive(:credit_cards).and_return(credit_cards) }
+      it { expect(active_subscription).to receive(:source).and_return(credit_card2) }
+      it { expect(active_subscription).to receive(:parent_order).and_return(order) }
+      it { expect(order).to receive(:user).and_return(user) }
+    end
+
+    describe 'Assignment' do
+      before { do_edit({ id: active_subscription.id }) }
+
+      it { expect(assigns[:credit_cards]).to eq(credit_cards_excluding_source) }
+      it { expect(assigns[:order]).to eq(order) }
+    end
+  end
+
+  describe "update" do
+    def do_update params
+      spree_put :update, params
+    end
+
+    let(:params) { { id: active_subscription.id, subscription: { quantity: 2 } } }
+
+    describe "when subscription is successfully updated" do
+      describe "expects to receive" do
+        context 'when payment method changed' do
+          before do
+            allow(Spree::Subscription).to receive(:find).and_return(active_subscription)
+          end
+          before do
+            allow(active_subscription).to receive(:cancelled?).and_return(false)
+            allow(active_subscription).to receive(:update_attributes).and_return(true)
+          end
+          context 'when existing card selected' do
+            before { params.merge!(use_another_card: 1, use_existing_card: 'yes', order: { existing_card: 1 }) }
+            after { do_update(params) }
+            it { expect(active_subscription).to receive(:update_attributes).with('quantity' => '2', 'source_id' => '1').and_return(true) }
+          end
+          context 'when new card created' do
+            let(:credit_card_params) { { name: 'Sachin Mittal', 
+                                         number: '4012888888881881', 
+                                         cc_type: 'visa',
+                                         verification_value: '1212',
+                                         expiry: '05/33',
+                                         payment_method_id: 1 } }
+
+            before do
+              allow(controller).to receive(:subscription_user).and_return(user)
+              allow(user).to receive(:credit_cards).and_return(credit_cards)
+              allow(credit_cards).to receive(:create)
+              params.merge!(use_another_card: 1, use_existing_card: 'no', payment_source: { '1' => credit_card_params })
+            end
+
+            after { do_update(params) }
+            it { expect(params[:payment_source]['1'][:payment_method_id]).not_to be_nil }
+          end
+        end
+      end
     end
   end
 

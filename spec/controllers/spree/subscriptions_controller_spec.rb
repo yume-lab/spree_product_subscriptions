@@ -4,9 +4,15 @@ describe Spree::SubscriptionsController, type: :controller do
 
   stub_authorization!
 
-  let(:active_subscription) { mock_model(Spree::Subscription, id: 1, enabled: true, next_occurrence_at: Time.current) }
+  let(:active_subscription) { mock_model(Spree::Subscription, id: 1, enabled: true, next_occurrence_at: Time.current, source_id: 2) }
   let(:cancelled_subscription) { mock_model(Spree::Subscription, id: 2, cancelled_at: Time.current, cancellation_reasons: "Test", enabled: true) }
   let(:subscriptions) { double(ActiveRecord::Relation) }
+  let(:user) { mock_model(Spree.user_class) }
+  let(:credit_card1) { mock_model(Spree::CreditCard, id: 1, name: 'Sachin Mittal', number: '4111111111111111', expiry: '02/21', verification_value: '127', cc_type: 'visa', payment_method_id: 1) }
+  let(:credit_card2) { mock_model(Spree::CreditCard, id: 2, name: 'Sachin Mittal', number: '4222222222222', expiry: '02/31', verification_value: '1212', cc_type: 'visa', payment_method_id: 1) }
+  let(:credit_cards) { [credit_card1, credit_card2] }
+  let(:credit_cards_excluding_source) { [credit_card1] }
+  let(:order) { create(:completed_order_with_pending_payment) }
 
   describe "Callbacks" do
     def do_cancel params
@@ -227,19 +233,35 @@ describe Spree::SubscriptionsController, type: :controller do
       before do
         allow(Spree::Subscription).to receive(:active).and_return(subscriptions)
         allow(subscriptions).to receive(:find_by).and_return(active_subscription)
-        allow(controller).to receive(:load_variables)
+        allow(active_subscription).to receive(:reload).and_return(active_subscription)
+        allow(controller).to receive(:subscription_user).and_return(user)
+        allow(user).to receive(:credit_cards).and_return(credit_cards)
+        allow(active_subscription).to receive(:source).and_return(credit_card2)
+        allow(active_subscription).to receive(:parent_order).and_return(order)
       end
 
       describe "expects to receive" do
         after { do_edit({ id: active_subscription.id }) }
         it { expect(Spree::Subscription).to receive(:active).and_return(subscriptions) }
-        it { expect(controller).to receive(:load_variables) }
+        it { expect(subscriptions).to receive(:find_by).and_return(active_subscription) }
+        it { expect(active_subscription).to receive(:reload).and_return(active_subscription) }
+        it { expect(controller).to receive(:subscription_user).and_return(user) }
+        it { expect(user).to receive(:credit_cards).and_return(credit_cards) }
+        it { expect(active_subscription).to receive(:source).and_return(credit_card2) }
+        it { expect(active_subscription).to receive(:parent_order).and_return(order) }
       end
 
       describe "response" do
         before { do_edit({ id: active_subscription.id }) }
         it { expect(response).to have_http_status 200 }
         it { expect(response).to render_template :edit }
+      end
+
+      describe 'Assignment' do
+        before { do_edit({ id: active_subscription.id }) }
+
+        it { expect(assigns[:credit_cards]).to eq(credit_cards_excluding_source) }
+        it { expect(assigns[:order]).to eq(order) }
       end
     end
 
@@ -283,12 +305,48 @@ describe Spree::SubscriptionsController, type: :controller do
         end
 
         describe "expects to receive" do
-          after { do_update(params) }
-          it { expect(Spree::Subscription).to receive(:active).and_return(subscriptions) }
-          it { expect(subscriptions).to receive(:find_by).and_return(active_subscription) }
-          it { expect(active_subscription).to receive(:not_changeable?).and_return(false) }
-          it { expect(controller).to receive(:subscription_attributes).and_call_original }
-          it { expect(active_subscription).to receive(:update).with(controller.send :subscription_attributes).and_return(true) }
+          context 'when payment method remains same' do
+            after { do_update(params) }
+            it { expect(Spree::Subscription).to receive(:active).and_return(subscriptions) }
+            it { expect(subscriptions).to receive(:find_by).and_return(active_subscription) }
+            it { expect(active_subscription).to receive(:not_changeable?).and_return(false) }
+            it { expect(controller).to receive(:subscription_attributes).and_call_original }
+            it { expect(active_subscription).to receive(:update).with(controller.send :subscription_attributes).and_return(true) }
+          end
+          context 'when payment method changed' do
+            context 'when existing card selected' do
+              before { params.merge!(use_another_card: 1, use_existing_card: 'yes', order: { existing_card: 1 }) }
+              after { do_update(params) }
+              it { expect(Spree::Subscription).to receive(:active).and_return(subscriptions) }
+              it { expect(subscriptions).to receive(:find_by).and_return(active_subscription) }
+              it { expect(active_subscription).to receive(:not_changeable?).and_return(false) }
+              it { expect(controller).to receive(:subscription_attributes).and_call_original }
+              it { expect(active_subscription).to receive(:update).with(controller.send :subscription_attributes).and_return(true) }
+            end
+            context 'when new card created' do
+              let(:credit_card_params) { { name: 'Sachin Mittal', 
+                                           number: '4012888888881881', 
+                                           cc_type: 'visa',
+                                           verification_value: '1212',
+                                           expiry: '05/33',
+                                           payment_method_id: 1 } }
+
+              before do
+                allow(controller).to receive(:subscription_user).and_return(user)
+                allow(user).to receive(:credit_cards).and_return(credit_cards)
+                allow(credit_cards).to receive(:create)
+                params.merge!(use_another_card: 1, use_existing_card: 'no', payment_source: { '1' => credit_card_params })
+              end
+
+              after { do_update(params) }
+              it { expect(Spree::Subscription).to receive(:active).and_return(subscriptions) }
+              it { expect(subscriptions).to receive(:find_by).and_return(active_subscription) }
+              it { expect(active_subscription).to receive(:not_changeable?).and_return(false) }
+              it { expect(controller).to receive(:subscription_attributes).and_call_original }
+              it { expect(active_subscription).to receive(:update).with(controller.send :subscription_attributes).and_return(true) }
+              it { expect(params[:payment_source]['1'][:payment_method_id]).not_to be_nil }
+            end
+          end
         end
 
         describe "response" do
@@ -313,7 +371,11 @@ describe Spree::SubscriptionsController, type: :controller do
           allow(active_subscription).to receive(:not_changeable?).and_return(false)
           allow(controller).to receive(:subscription_attributes).and_return(params[:subscription])
           allow(active_subscription).to receive(:update).and_return(false)
-          allow(controller).to receive(:load_variables)
+          allow(active_subscription).to receive(:reload).and_return(active_subscription)
+          allow(controller).to receive(:subscription_user).and_return(user)
+          allow(user).to receive(:credit_cards).and_return(credit_cards)
+          allow(active_subscription).to receive(:parent_order).and_return(order)
+          allow(active_subscription).to receive(:source).and_return(credit_card2)
         end
 
         describe "expects to receive" do
@@ -323,7 +385,18 @@ describe Spree::SubscriptionsController, type: :controller do
           it { expect(active_subscription).to receive(:not_changeable?).and_return(false) }
           it { expect(controller).to receive(:subscription_attributes).and_call_original }
           it { expect(active_subscription).to receive(:update).with(controller.send :subscription_attributes).and_return(false) }
-          it { expect(controller).to receive(:load_variables) }
+          it { expect(active_subscription).to receive(:reload).and_return(active_subscription) }
+          it { expect(controller).to receive(:subscription_user).and_return(user) }
+          it { expect(user).to receive(:credit_cards).and_return(credit_cards) }
+          it { expect(active_subscription).to receive(:source).and_return(credit_card2) }
+          it { expect(active_subscription).to receive(:parent_order).and_return(order) }
+        end
+
+        describe 'Assignment' do
+          before { do_update(params) }
+
+          it { expect(assigns[:credit_cards]).to eq(credit_cards_excluding_source) }
+          it { expect(assigns[:order]).to eq(order) }
         end
 
         describe "response" do

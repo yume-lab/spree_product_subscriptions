@@ -4,7 +4,7 @@ module Spree
 
       before_action :ensure_not_cancelled, only: [:update, :cancel, :cancellation, :pause, :unpause]
       before_action :update_params, only: :update
-      
+
       def cancellation
       end
 
