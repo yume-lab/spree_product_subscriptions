@@ -25,7 +25,7 @@ bundle
 bundle exec rails g spree_items_subscriptions:install
 ```
 
-You can alse seed the default data with:
+You can also seed the default data with:
 ```shell
 bundle exec rails g spree_items_subscriptions:seed
 ```
