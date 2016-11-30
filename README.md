@@ -15,7 +15,7 @@ Installation
 Add spree_product_subscriptions to your Gemfile:
 
 ```ruby
-gem 'spree_product_subscriptions', github: 'vinsol-spree-contrib/spree_product_subscriptions'
+gem 'spree_product_subscriptions', github: 'vinsol-spree-contrib/spree_product_subscriptions', branch: '3-1-stable'
 ```
 
 Bundle your dependencies and run the installation generator:
