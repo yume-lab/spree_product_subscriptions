@@ -95,7 +95,7 @@ describe Spree::Subscription, type: :model do
     it { is_expected.to belong_to(:source) }
     it { is_expected.to have_many(:orders_subscriptions).class_name("Spree::OrderSubscription").dependent(:destroy) }
     it { is_expected.to have_many(:orders).through(:orders_subscriptions) }
-    it { is_expected.to have_many(:complete_orders).conditions(:complete).through(:orders_subscriptions).source(:order) }
+    it { is_expected.to have_many(:complete_orders).through(:orders_subscriptions).source(:order) }
     it { is_expected.to accept_nested_attributes_for(:ship_address) }
     it { is_expected.to accept_nested_attributes_for(:bill_address) }
   end
@@ -500,15 +500,15 @@ describe Spree::Subscription, type: :model do
 
     context "mail sending methods" do
       context "#notify_reoccurrence" do
-        it { expect { active_subscription.send :notify_reoccurrence }.to change { ActionMailer::Base.deliveries.count }.by 1 }
+        it { expect { active_subscription.send :notify_reoccurrence }.to change { ActiveJob::Base.queue_adapter.enqueued_jobs.size }.by 1 }
       end
 
       context "#notify_cancellation" do
-        it { expect { active_subscription.send :notify_cancellation }.to change { ActionMailer::Base.deliveries.count }.by 1 }
+        it { expect { active_subscription.send :notify_cancellation }.to change { ActiveJob::Base.queue_adapter.enqueued_jobs.size }.by 1 }
       end
 
       context "#notify_user" do
-        it { expect { active_subscription.send :notify_user }.to change { ActionMailer::Base.deliveries.count }.by 1 }
+        it { expect { active_subscription.send :notify_user }.to change { ActiveJob::Base.queue_adapter.enqueued_jobs.size }.by 1 }
       end
 
       context "#send_prior_notification" do
@@ -517,7 +517,7 @@ describe Spree::Subscription, type: :model do
           active_subscription.prior_notification_days_gap = active_subscription.next_occurrence_at.to_date - Time.current.to_date
         end
         context "is eligible_for_prior_notification" do
-          it { expect { active_subscription.send :send_prior_notification }.to change { ActionMailer::Base.deliveries.count }.by 1 }
+          it { expect { active_subscription.send :send_prior_notification }.to change { ActiveJob::Base.queue_adapter.enqueued_jobs.size }.by 1 }
         end
         context "is not eligible_for_prior_notification" do
           before do

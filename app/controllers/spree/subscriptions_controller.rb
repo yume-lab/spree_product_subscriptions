@@ -94,7 +94,7 @@ module Spree
       def ensure_not_cancelled
         if @subscription.not_changeable?
           respond_to do |format|
-            format.html { redirect_to :back, error: Spree.t("subscriptions.error.not_changeable") }
+            format.html { redirect_back fallback_location: root_path, error: Spree.t("subscriptions.error.not_changeable") }
             format.json { render json: { flash: Spree.t("subscriptions.error.not_changeable") }, status: 422 }
           end
         end
