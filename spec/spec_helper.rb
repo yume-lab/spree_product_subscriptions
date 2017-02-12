@@ -67,5 +67,8 @@ RSpec.configure do |config|
 end
 
 
+ ActiveJob::Base.queue_adapter = :test
+
+
 
 Dir[File.join(File.dirname(__FILE__), 'support/**/*.rb')].each { |file| require file }
