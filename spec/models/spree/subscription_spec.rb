@@ -136,6 +136,13 @@ describe Spree::Subscription, type: :model do
       it { expect(Spree::Subscription.not_cancelled).to_not include cancelled_subscription }
     end
 
+    context ".processable" do
+      it { expect(Spree::Subscription.processable).to include active_subscription }
+      it { expect(Spree::Subscription.processable).to_not include disabled_subscription }
+      it { expect(Spree::Subscription.processable).to_not include cancelled_subscription }
+      it { expect(Spree::Subscription.processable).to_not include paused_subscription }
+    end
+
     context ".eligible_for_subscription" do
       it { expect(Spree::Subscription.eligible_for_subscription).to include active_subscription }
       it { expect(Spree::Subscription.eligible_for_subscription).to_not include disabled_subscription }
