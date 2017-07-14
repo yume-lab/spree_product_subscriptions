@@ -34,7 +34,8 @@ module Spree
     scope :active, -> { where(enabled: true) }
     scope :not_cancelled, -> { where(cancelled_at: nil) }
     scope :with_appropriate_delivery_time, -> { where("next_occurrence_at <= :current_date", current_date: Time.current) }
-    scope :eligible_for_subscription, -> { unpaused.active.not_cancelled.with_appropriate_delivery_time }
+    scope :processable, -> { unpaused.active.not_cancelled }
+    scope :eligible_for_subscription, -> { processable.with_appropriate_delivery_time }
     scope :with_parent_orders, -> (orders) { where(parent_order: orders) }
 
     with_options allow_blank: true do
@@ -123,7 +124,7 @@ module Spree
       def eligible_for_prior_notification?
         (next_occurrence_at.to_date - Time.current.to_date).round == prior_notification_days_gap
       end
-      
+
       def update_price
         if valid_variant?
           self.price = variant.price
