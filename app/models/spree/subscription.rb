@@ -67,9 +67,15 @@ module Spree
     before_update :next_occurrence_at_not_changed?, if: :paused?
     after_update :notify_user, if: :user_notifiable?
     after_update :notify_cancellation, if: :cancellation_notifiable?
+    after_update :update_next_occurrence_at
 
     def process
-      new_order = recreate_order if deliveries_remaining?
+      if variant.product.stock_items.sum(:count_on_hand) >= quantity || variant.product.stock_items.any? { |stock| stock.backorderable? }
+        update_column(:next_occurrence_possible, true)
+      else
+        update_column(:next_occurrence_possible, false)
+      end
+      new_order = recreate_order if (deliveries_remaining? && next_occurrence_possible)
       update(next_occurrence_at: next_occurrence_at_value) if new_order.try :completed?
     end
 
@@ -273,5 +279,8 @@ module Spree
         end
       end
 
+      def update_next_occurrence_at
+        update_column(:next_occurrence_at, next_occurrence_at_value)
+      end
   end
 end
