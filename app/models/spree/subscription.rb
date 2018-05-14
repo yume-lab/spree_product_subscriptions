@@ -70,7 +70,7 @@ module Spree
     after_update :update_next_occurrence_at
 
     def process
-      if (variant.stock_items.sum(:count_on_hand) >= quantity || variant.stock_items.any? { |stock| stock.backorderable? }) || (!variant.product.discontinued?)
+      if (variant.stock_items.sum(:count_on_hand) >= quantity || variant.stock_items.any? { |stock| stock.backorderable? }) && (!variant.product.discontinued?)
         update_column(:next_occurrence_possible, true)
       else
         update_column(:next_occurrence_possible, false)
