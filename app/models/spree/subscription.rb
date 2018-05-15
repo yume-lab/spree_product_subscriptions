@@ -177,6 +177,7 @@ module Spree
         add_variant_to_order(order)
         add_shipping_address(order)
         add_delivery_method_to_order(order)
+        add_shipping_costs_to_order(order)
         add_payment_method_to_order(order)
         confirm_order(order)
         order
@@ -199,6 +200,10 @@ module Spree
 
       def add_delivery_method_to_order(order)
         order.next
+      end
+
+      def add_shipping_costs_to_order(order)
+        order.set_shipments_cost
       end
 
       def add_payment_method_to_order(order)
