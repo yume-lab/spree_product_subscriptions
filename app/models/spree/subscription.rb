@@ -45,11 +45,12 @@ module Spree
       validates :parent_order, uniqueness: { scope: :variant }
     end
     with_options presence: true do
-      validates :quantity, :delivery_number, :price, :number, :variant, :parent_order, :frequency
+      validates :quantity, :delivery_number, :price, :number, :variant, :parent_order, :frequency, :prior_notification_days_gap
       validates :cancellation_reasons, :cancelled_at, if: :cancelled
       validates :ship_address, :bill_address, :next_occurrence_at, :source, if: :enabled?
     end
     validate :next_occurrence_at_range, if: :next_occurrence_at
+    validate :prior_notification_days_gap_value, if: :prior_notification_days_gap
 
     define_model_callbacks :pause, only: [:before]
     before_pause :can_pause?
@@ -299,6 +300,12 @@ module Spree
 
       def update_next_occurrence_at
         update_column(:next_occurrence_at, next_occurrence_at_value)
+      end
+
+      def prior_notification_days_gap_value
+        if Time.current + prior_notification_days_gap.days >= next_occurrence_at_value
+          errors.add(:prior_notification_days_gap, Spree.t('subscriptions.error.should_be_earlier_than_next_delivery'))
+        end
       end
   end
 end
