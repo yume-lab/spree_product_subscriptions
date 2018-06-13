@@ -20,8 +20,8 @@ Gem::Specification.new do |s|
 
   s.add_development_dependency 'capybara', '~> 2.4'
   s.add_development_dependency 'coffee-rails', '~> 4.2'
-  s.add_development_dependency 'database_cleaner', '~> 1.5.1'
-  s.add_development_dependency 'factory_girl', '~> 4.5'
+  s.add_development_dependency 'database_cleaner'
+  s.add_development_dependency 'factory_bot'
   s.add_development_dependency 'ffaker'
   s.add_development_dependency 'pry-rails', '~> 0.3.4'
   s.add_development_dependency 'rspec-rails',  '~> 3.4'

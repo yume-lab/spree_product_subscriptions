@@ -303,6 +303,8 @@ module Spree
       end
 
       def prior_notification_days_gap_value
+        return if next_occurrence_at_value.nil?
+
         if Time.current + prior_notification_days_gap.days >= next_occurrence_at_value
           errors.add(:prior_notification_days_gap, Spree.t('subscriptions.error.should_be_earlier_than_next_delivery'))
         end
